@@ -1,0 +1,163 @@
+#!/usr/bin/env node
+
+/**
+ * Module dependencies.
+ */
+
+var app = require('../app');
+var debug = require('debug')('rtc-test-sender:server');
+var http = require('http');
+
+/**
+ * Get port from environment and store in Express.
+ */
+
+var port = normalizePort(process.env.PORT || '3000');
+app.set('port', port);
+
+/**
+ * Create HTTP server.
+ */
+
+var server = http.createServer(app);
+
+app.io = require("socket.io")(server, {
+  cors: {
+    origin: '*',
+  }
+});
+
+app.io.attach(server);
+
+app.io.on("connection", (socket) => {
+  console.log("on connection!")
+
+  socket.on("enterRoom",(room, user)=>{
+    socket.join(room);
+    let initial = true;
+    if(!rooms[room]) {
+      console.log("joined new room")
+      rooms[room] = {
+        id: room,
+        candidates: [ user ]
+      };
+    } else {
+      initial=false;
+      if(rooms[room].candidates.length < 3){
+        console.log("joined existing room");
+        rooms[room].candidates.push(user);
+        socket.to(room).emit("joined", user);;
+      } else {
+        socket.leave(room);
+        console.log("The room was full")
+        socket.emit("room", "room was full. leaving");
+      }
+    }
+    socket.emit("joinResult",{ initial, room });
+  });
+
+  socket.on("caller-to-server", (data) => {
+    if(data && data.room && data.signalData) {
+      if(data.signalData.type === "offer") {
+        console.log("caller-to-server - offer", data.signalData)
+        socket.to(data.room).emit("offer-to-callee",data.signalData);
+      } else {
+        console.log("caller-to-server - candidate", data.signalData)
+        socket.to(data.room).emit("candidate-to-callee",data.signalData);
+      }
+    }
+  });
+
+  socket.on("callee-to-server", data => {
+    console.log("callee-to-server", data.signalData);
+    if(data && data.room && data.signalData) {
+      socket.to(data.room).emit("signal-to-caller",data.signalData);
+    }
+  });
+
+  socket.on("leaveRoom",(room, user)=>{
+    if(rooms[room] && rooms[room].candidates) {
+      rooms[room].candidates.pop(user);
+      if(rooms[room].candidates.length == 0) {
+        console.log("destroy empty room")
+        delete rooms[room];
+      } else {
+        socket.to(room).emit("end", `${user}님이 나갔습니다. 통화를 종료하시겠습니까?`);
+      }
+    }
+    console.log("leaving room",rooms,socket.id, room)
+  });
+
+  socket.on("disconnecting",()=>{
+    console.log("disconnecting", socket.rooms);
+  });
+
+  // socketHandler(socket);
+});
+/**
+ * Listen on provided port, on all network interfaces.
+ */
+
+server.listen(port);
+server.on('error', onError);
+server.on('listening', onListening);
+
+/**
+ * Normalize a port into a number, string, or false.
+ */
+
+function normalizePort(val) {
+  var port = parseInt(val, 10);
+
+  if (isNaN(port)) {
+    // named pipe
+    return val;
+  }
+
+  if (port >= 0) {
+    // port number
+    return port;
+  }
+
+  return false;
+}
+
+/**
+ * Event listener for HTTP server "error" event.
+ */
+
+function onError(error) {
+  if (error.syscall !== 'listen') {
+    throw error;
+  }
+
+  var bind = typeof port === 'string'
+    ? 'Pipe ' + port
+    : 'Port ' + port;
+
+  // handle specific listen errors with friendly messages
+  switch (error.code) {
+    case 'EACCES':
+      console.error(bind + ' requires elevated privileges');
+      process.exit(1);
+      break;
+    case 'EADDRINUSE':
+      console.error(bind + ' is already in use');
+      process.exit(1);
+      break;
+    default:
+      throw error;
+  }
+}
+
+/**
+ * Event listener for HTTP server "listening" event.
+ */
+
+function onListening() {
+  var addr = server.address();
+  var bind = typeof addr === 'string'
+    ? 'pipe ' + addr
+    : 'port ' + addr.port;
+  debug('Listening on ' + bind);
+}

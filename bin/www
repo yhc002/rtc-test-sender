@@ -12,7 +12,7 @@ var http = require('http');
  * Get port from environment and store in Express.
  */
 
-var port = normalizePort(process.env.PORT || '3000');
+var port = normalizePort(process.env.PORT || '8000');
 app.set('port', port);
 
 /**
@@ -28,6 +28,8 @@ app.io = require("socket.io")(server, {
 });
 
 app.io.attach(server);
+
+rooms={};
 
 app.io.on("connection", (socket) => {
   console.log("on connection!")

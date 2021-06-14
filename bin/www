@@ -58,7 +58,6 @@ app.io.on("connection", (socket) => {
   });
 
   socket.on("caller-to-server", (data) => {
-    console.log("caller-to-server",data)
     if(data && data.room && data.signalData && Number.isInteger(data.idx)) {
       if(data.signalData.type === "offer") {
         console.log("caller-to-server - offer", data.signalData)
@@ -77,6 +76,8 @@ app.io.on("connection", (socket) => {
     }
   });
 
+  socket.on("close",(room,id)=>socket.to(room).emit("close",id));
+
   socket.on("leaveRoom",(room)=>{
     if(rooms[room] && rooms[room].candidates) {
       rooms[room].candidates.pop(socket.id);
@@ -84,9 +85,9 @@ app.io.on("connection", (socket) => {
         console.log("destroy empty room")
         delete rooms[room];
       } 
-      else {
-        socket.to(room).emit("end");
-      }
+      // else {
+      //   socket.to(room).emit("end");
+      // }
     }
     console.log("leaving room",rooms,socket.id, room)
   });

@@ -3,7 +3,7 @@ const cors = require('cors');
 
 var router = express.Router();
 
-router.use(cors());
+// router.use(cors());
 
 /* GET home page. */
 router.get('/', function(req, res, next) {

@@ -23,7 +23,7 @@ var server = http.createServer(app);
 
 app.io = require("socket.io")(server, {
   cors: {
-    origin: '*',
+    origin: ['https://yhc002.github.io/rtc-test-app', 'https://yhc002.github.io/rtc-test-app/test']
   }
 });
 

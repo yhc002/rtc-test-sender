@@ -85,10 +85,11 @@ app.io.on("connection", (socket) => {
         console.log("destroy empty room")
         delete rooms[room];
       } 
-      // else {
-      //   socket.to(room).emit("end");
-      // }
+      else {
+        socket.to(room).emit("end");
+      }
     }
+    socket.disconnect();
     console.log("leaving room",rooms,socket.id, room)
   });
 

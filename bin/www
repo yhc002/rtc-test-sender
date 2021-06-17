@@ -38,20 +38,21 @@ app.io.on("connection", (socket) => {
     socket.join(room);
     let initial = true;
     if(!rooms[room]) {
-      console.log("joined new room")
       rooms[room] = {
         id: room,
         candidates: [ socket.id ]
       };
+      console.log("joined new room", rooms)
     } else {
       initial=false;
-      if(rooms[room].candidates.length < 3){
-        console.log("joined existing room");
+      if(rooms[room].candidates.length < 2){
         rooms[room].candidates.push(socket.id);
         socket.to(room).emit("joined");;
+        console.log("joined existing room", rooms);
       } else {
-        socket.leave(room);
-        socket.emit("room", "room was full. leaving");
+        socket.disconnect();
+        console.log('room is full')
+        // socket.emit("room", "room was full. leaving");
       }
     }
     socket.emit("joinResult",{ initial, room });
@@ -60,10 +61,10 @@ app.io.on("connection", (socket) => {
   socket.on("caller-to-server", (data) => {
     if(data && data.room && data.signalData && Number.isInteger(data.idx)) {
       if(data.signalData.type === "offer") {
-        console.log("caller-to-server - offer", data.signalData)
+        // console.log("caller-to-server - offer", data.signalData)
         socket.to(data.room).emit("offer-to-callee", { signalData: data.signalData, idx: data.idx });
       } else {
-        console.log("caller-to-server - candidate", data.signalData)
+        // console.log("caller-to-server - candidate", data.signalData)
         socket.to(data.room).emit("candidate-to-callee", { signalData: data.signalData, idx: data.idx });
       }
     }
@@ -79,24 +80,23 @@ app.io.on("connection", (socket) => {
   socket.on("close",(room,id)=>socket.to(room).emit("close",id));
 
   socket.on("leaveRoom",(room)=>{
-    if(rooms[room] && rooms[room].candidates) {
-      rooms[room].candidates.pop(socket.id);
-      if(rooms[room].candidates.length == 0) {
-        console.log("destroy empty room")
-        delete rooms[room];
-      } 
-      else {
-        socket.to(room).emit("end");
-      }
-    }
+    socket.to(room).emit("end");
     socket.disconnect();
-    console.log("leaving room",rooms,socket.id, room)
-  });
-
-  socket.on("disconnecting",()=>{
-    console.log("disconnecting", socket.rooms);
+    console.log("leave room");
   });
 });
+
+app.io.of("/").adapter.on("leave-room", (room, id) => {
+  if(rooms[room] && rooms[room].candidates) {
+    rooms[room].candidates = rooms[room].candidates.filter(e => e!==id);
+    console.log("leaving room",rooms, id, room)
+    if(rooms[room].candidates.length == 0) {
+      console.log("destroy empty room")
+      delete rooms[room];
+    }
+  }
+});
+
 /**
  * Listen on provided port, on all network interfaces.
  */
@@ -164,3 +164,4 @@ function onListening() {
     : 'port ' + addr.port;
   debug('Listening on ' + bind);
 }
+

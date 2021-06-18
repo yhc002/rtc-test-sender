@@ -62,7 +62,7 @@ app.io.on("connection", (socket) => {
     if(data && data.room && data.signalData && Number.isInteger(data.idx)) {
       if(data.signalData.type === "offer") {
         // console.log("caller-to-server - offer", data.signalData)
-        socket.to(data.room).emit("offer-to-callee", { signalData: data.signalData, idx: data.idx });
+        socket.to(data.room).emit("offer-to-callee", { signalData: data.signalData, idx: data.idx, connections: data.connections });
       } else {
         // console.log("caller-to-server - candidate", data.signalData)
         socket.to(data.room).emit("candidate-to-callee", { signalData: data.signalData, idx: data.idx });
@@ -76,6 +76,8 @@ app.io.on("connection", (socket) => {
       socket.to(data.room).emit("signal-to-caller", { signalData: data.signalData, idx: data.idx });
     }
   });
+
+  socket.on("connections-adjusted", (room, connections) => socket.to(room).emit("adjust-connections",connections));
 
   socket.on("close",(room,id)=>socket.to(room).emit("close",id));
 

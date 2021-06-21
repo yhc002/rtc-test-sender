@@ -32,11 +32,10 @@ app.io.attach(server);
 rooms={};
 
 app.io.on("connection", (socket) => {
-  console.log("on connection!")
-
   socket.on("enterRoom",(room, isHost)=>{
     socket.join(room);
     let enter = true;
+    let message = "입장하였습니다."
     if(!rooms[room] && isHost) {
       rooms[room] = {
         id: room,
@@ -46,28 +45,31 @@ app.io.on("connection", (socket) => {
     } else {
       if(!rooms[room]) {
         enter=false;
-      } else {
+        message="방을 찾을 수 없습니다."
+      } else if(isHost) {
+        enter=false;
+        message="방을 생성할 수 없습니다."
+      } 
+      else {
         if(rooms[room].candidates.length < 2){
           rooms[room].candidates.push(socket.id);
           socket.to(room).emit("joined");;
           console.log("joined existing room", rooms);
         } else {
-          socket.disconnect();
+          enter=false;
+          message="정원이 찬 방입니다."
           console.log('room is full')
-          // socket.emit("room", "room was full. leaving");
         }
       }
     }
-    socket.emit("joinResult",enter);
+    socket.emit("joinResult",enter, message);
   });
 
   socket.on("caller-to-server", (data) => {
     if(data && data.room && data.signalData && Number.isInteger(data.idx)) {
       if(data.signalData.type === "offer") {
-        // console.log("caller-to-server - offer", data.signalData)
         socket.to(data.room).emit("offer-to-callee", { signalData: data.signalData, idx: data.idx, connections: data.connections });
       } else {
-        // console.log("caller-to-server - candidate", data.signalData)
         socket.to(data.room).emit("candidate-to-callee", { signalData: data.signalData, idx: data.idx });
       }
     }

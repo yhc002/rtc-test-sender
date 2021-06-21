@@ -34,28 +34,31 @@ rooms={};
 app.io.on("connection", (socket) => {
   console.log("on connection!")
 
-  socket.on("enterRoom",(room)=>{
+  socket.on("enterRoom",(room, isHost)=>{
     socket.join(room);
-    let initial = true;
-    if(!rooms[room]) {
+    let enter = true;
+    if(!rooms[room] && isHost) {
       rooms[room] = {
         id: room,
         candidates: [ socket.id ]
       };
       console.log("joined new room", rooms)
     } else {
-      initial=false;
-      if(rooms[room].candidates.length < 2){
-        rooms[room].candidates.push(socket.id);
-        socket.to(room).emit("joined");;
-        console.log("joined existing room", rooms);
+      if(!rooms[room]) {
+        enter=false;
       } else {
-        socket.disconnect();
-        console.log('room is full')
-        // socket.emit("room", "room was full. leaving");
+        if(rooms[room].candidates.length < 2){
+          rooms[room].candidates.push(socket.id);
+          socket.to(room).emit("joined");;
+          console.log("joined existing room", rooms);
+        } else {
+          socket.disconnect();
+          console.log('room is full')
+          // socket.emit("room", "room was full. leaving");
+        }
       }
     }
-    socket.emit("joinResult",{ initial, room });
+    socket.emit("joinResult",enter);
   });
 
   socket.on("caller-to-server", (data) => {
